@@ -6,6 +6,7 @@ class Client {
   final int loanTerm;
   final double interestRate;
   final int agentId;
+  final String agentName;
   final double agentShare;
 
   Client({
@@ -16,6 +17,7 @@ class Client {
     required this.loanTerm,
     required this.interestRate,
     required this.agentId,
+    required this.agentName,
     required this.agentShare,
   });
 
@@ -28,6 +30,7 @@ class Client {
       'loanTerm': loanTerm,
       'interestRate': interestRate,
       'agentId': agentId,
+      'agentName': agentName,
       'agentShare': agentShare,
     };
   }
@@ -41,6 +44,7 @@ class Client {
       loanTerm: map['loanTerm'],
       interestRate: map['interestRate'].toDouble(),
       agentId: map['agentId'],
+      agentName: map['agentName'],
       agentShare: map['agentShare'].toDouble(),
     );
   }

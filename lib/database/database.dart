@@ -1,6 +1,8 @@
 import 'package:jiffy/jiffy.dart';
 import 'package:loan_management/models/agent.dart';
+import 'package:loan_management/models/balanceSheet.dart';
 import 'package:loan_management/models/client.dart';
+import 'package:loan_management/models/partialPayment.dart';
 import 'package:loan_management/models/payment.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -41,7 +43,7 @@ class DatabaseHelper {
         agentName TEXT NOT NULL,
         contactNo TEXT,
         email TEXT
-        )
+        );
         ''');
     await db.execute('''
         CREATE TABLE client (
@@ -52,6 +54,7 @@ class DatabaseHelper {
         loanTerm INTEGER NOT NULL,
         interestRate REAL NOT NULL,
         agentId INTEGER NOT NULL,
+        agentName TEXT NOT NULL,
         agentShare INTEGER NOT NULL,
         FOREIGN KEY (agentId) REFERENCES agent (agentId) ON DELETE CASCADE
         )
@@ -60,14 +63,56 @@ class DatabaseHelper {
         CREATE TABLE payment (
         paymentId INTEGER PRIMARY KEY AUTOINCREMENT,
         loanTerm INTEGER NOT NULL,
+        interestRate REAL NOT NULL,
         dueDate TEXT NOT NULL,
+        principalBalance REAL NOT NULL,
         monthlyPayment REAL NOT NULL,
         interestPaid REAL NOT NULL,
+        capitalPayment REAL NOT NULL,
+        agentShare REAL NOT NULL,
         paymentDate TEXT, 
         paymentMode TEXT,
         remarks TEXT,
+        agentName INTEGER NOT NULL,
+        agentId INTEGER NOT NULL,
         clientId INTEGER NOT NULL,
+        clientName TEXT NOT NULL, 
         FOREIGN KEY (clientId) REFERENCES client (clientId) ON DELETE CASCADE
+        )
+        ''');
+    await db.execute('''
+        CREATE TABLE partialPayment (
+        partialPaymentId INTEGER PRIMARY KEY AUTOINCREMENT,
+        dueDate TEXT NOT NULL,
+        interestRate REAL NOT NULL,
+        capitalPayment REAL,
+        interestPaid REAL,
+        paymentDate TEXT,
+        paymentMode TEXT,
+        remarks TEXT,
+        agentShare REAL NOT NULL,
+        agentId INTEGER NOT NULL,
+        agentName TEXT NOT NULL,
+        clientId INTEGER NOT NULL,
+        clientName TEXT NOT NULL, 
+        paymentId INTEGER NOT NULL,
+        FOREIGN KEY (paymentId) REFERENCES payment (paymentId) ON DELETE CASCADE
+        )
+        ''');
+    await db.execute('''
+        CREATE TABLE balanceSheet( 
+        balanceSheetId INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        balanceOUT REAL NOT NULL,
+        balanceIN REAL NOT NULL,
+        balanceAmount REAL,
+        remarks TEXT,
+        clientId INTEGER,
+        paymentId INTEGER,
+        partialPaymentId INTEGER,
+        FOREIGN KEY (clientId) REFERENCES client (clientId) ON DELETE CASCADE,
+        FOREIGN KEY (paymentId) REFERENCES payment (paymentId) ON DELETE CASCADE,
+        FOREIGN KEY (partialPaymentId) REFERENCES partialPayment (partialPaymentId) ON DELETE CASCADE
         )
         ''');
   }
@@ -83,7 +128,10 @@ class DatabaseHelper {
   // Get all agents
   Future<List<Agent>> getAllAgents() async {
     Database db = await database;
-    final List<Map<String, dynamic>> maps = await db.query('agent');
+    final List<Map<String, dynamic>> maps = await db.query(
+      'agent',
+      orderBy: 'agentId DESC',
+    );
 
     // Convert the List<Map<String, dynamic>> to List<Agent>
     return List.generate(maps.length, (index) {
@@ -120,15 +168,15 @@ class DatabaseHelper {
     );
   }
 
-  // Get number of clients per agentID
-  Future<int> getClientCountByAgentId(int agentId) async {
+  // Update Agent Client Count
+  Future<int> updateAgentClientCount(int agentId, int clientCount) async {
     Database db = await database;
-    final result = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM client WHERE agentId = ?',
-      [agentId],
+    return await db.update(
+      'agent',
+      {'clientCount': clientCount},
+      where: 'agentId = ?',
+      whereArgs: [agentId],
     );
-
-    return Sqflite.firstIntValue(result) ?? 0;
   }
 
   Future<void> deleteAllClients() async {
@@ -172,7 +220,10 @@ class DatabaseHelper {
   // Get all clients
   Future<List<Client>> getAllClients() async {
     Database db = await database;
-    final List<Map<String, dynamic>> maps = await db.query('client');
+    final List<Map<String, dynamic>> maps = await db.query(
+      'client',
+      orderBy: 'clientId DESC',
+    );
 
     return List.generate(maps.length, (index) {
       return Client.fromMap(maps[index]);
@@ -229,45 +280,66 @@ class DatabaseHelper {
     return null;
   }
 
-  // PAYMENTS CRUD
-  // generate Payments for a client
-  Future<void> generatePayments(Client client) async {
+  // Get Last Created Client
+  Future<Client?> getLastCreatedClient() async {
     Database db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
-      'payment',
-      where: 'clientId = ?',
-      whereArgs: [client.clientId],
+      'client',
+      orderBy: 'clientId DESC',
+      limit: 1,
     );
 
     if (maps.isNotEmpty) {
-      return;
+      return Client.fromMap(maps.first);
     }
-
-    double totalLoanAmount =
-        client.loanAmount + (client.loanAmount * (client.interestRate / 100));
-    double monthlyPayment = totalLoanAmount / client.loanTerm;
-
-    for (int i = 0; i < client.loanTerm; i++) {
-      final payment = Payment(
-        loanTerm: client.loanTerm,
-        dueDate: Jiffy.parse(
-          client.loanDate,
-        ).add(months: i + 1).format(pattern: 'MMMM d, yyy'),
-        monthlyPayment: monthlyPayment,
-        interestPaid:
-            totalLoanAmount * (client.interestRate / 100) / client.loanTerm,
-        paymentDate: null,
-        paymentMode: null,
-        remarks: null,
-        clientId: client.clientId!,
-      );
-      await db.insert("payment", payment.toMap());
-    }
+    return null;
   }
 
-  Future<void> insertPayment(Payment payment) async {
+  // PAYMENTS CRUD
+  // Generate Payments for Clients
+  Future<void> generatePayments(Client client) async {
     Database db = await database;
-    await db.insert("payment", payment.toMap());
+    List<Payment> payments = [];
+
+    double totalAmount = client.loanAmount * (1 + client.interestRate / 100);
+    int loanTerm = client.loanTerm;
+    double principalMonthlyPayment = client.loanAmount / loanTerm;
+    double actualMonthlyPayment = totalAmount / loanTerm;
+
+    double interestPaid = actualMonthlyPayment - principalMonthlyPayment;
+    double capitalPayment = principalMonthlyPayment;
+
+    for (int i = 0; i < loanTerm; i++) {
+      String dueDate = Jiffy.parse(
+        client.loanDate,
+      ).add(months: i + 1).format(pattern: 'yyyy-MM-dd');
+
+      // Calculations
+      double principalBalance =
+          client.loanAmount - (principalMonthlyPayment * i);
+
+      payments.add(
+        Payment(
+          loanTerm: loanTerm,
+          interestRate: client.interestRate,
+          dueDate: dueDate,
+          principalBalance: principalBalance,
+          monthlyPayment: actualMonthlyPayment,
+          interestPaid: interestPaid,
+          capitalPayment: capitalPayment,
+          agentShare: client.agentShare,
+          remarks: "Due",
+          agentName: client.agentName,
+          clientId: client.clientId!,
+          clientName: client.clientName,
+          agentId: client.agentId,
+        ),
+      );
+    }
+
+    for (var payment in payments) {
+      await db.insert('payment', payment.toMap());
+    }
   }
 
   // Get All Payments
@@ -278,6 +350,18 @@ class DatabaseHelper {
     return List.generate(maps.length, (index) {
       return Payment.fromMap(maps[index]);
     });
+  }
+
+  // Check if Client has Payments already
+  Future<bool> hasPayments(int clientId) async {
+    Database db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'payment',
+      where: 'clientId = ?',
+      whereArgs: [clientId],
+    );
+
+    return maps.isNotEmpty;
   }
 
   // Get All Payments by clientId
@@ -292,6 +376,213 @@ class DatabaseHelper {
     return List.generate(maps.length, (index) {
       return Payment.fromMap(maps[index]);
     });
+  }
+
+  // Update payment remarks
+  Future<int> updatePaymentRemarks(
+    int paymentId,
+    String remarks,
+    String paymentDate,
+    String paymentMode,
+  ) async {
+    Database db = await database;
+    return await db.update(
+      'payment',
+      {
+        'remarks': remarks,
+        'paymentDate': paymentDate,
+        'paymentMode': paymentMode,
+      },
+      where: 'paymentId = ?',
+      whereArgs: [paymentId],
+    );
+  }
+
+  //CRUD for Partial Payments
+
+  // Insert a partial payment
+  Future<int> insertPartialPayment(Partialpayment partialPayment) async {
+    Database db = await database;
+    return await db.insert("partialPayment", partialPayment.toMap());
+  }
+
+  // Get all partial payments for a specific clientId
+  Future<List<Partialpayment>> getPartialPaymentsByClientId(
+    int clientId,
+  ) async {
+    Database db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'partialPayment',
+      where: 'clientId = ?',
+      whereArgs: [clientId],
+      orderBy: 'paymentId ASC',
+    );
+
+    return List.generate(maps.length, (index) {
+      return Partialpayment.fromMap(maps[index]);
+    });
+  }
+
+  // Delete all partial payments for a specific paymentId
+  Future<int> deletePartialPaymentsByPaymentId(int paymentId) async {
+    Database db = await database;
+    return await db.delete(
+      'partialPayment',
+      where: 'paymentId = ?',
+      whereArgs: [paymentId],
+    );
+  }
+
+  // Update partial payment remarks
+  Future<int> updatePartialPayment(
+    int partialPaymentId,
+    String remarks,
+    String paymentDate,
+    String paymentMode,
+  ) async {
+    Database db = await database;
+    return await db.update(
+      'partialPayment',
+      {
+        'remarks': remarks,
+        'paymentDate': paymentDate,
+        'paymentMode': paymentMode,
+      },
+      where: 'partialPaymentId = ?',
+      whereArgs: [partialPaymentId],
+    );
+  }
+
+  // Print all partial payments (utility method for debugging)
+  Future<void> printAllPartialPayments() async {
+    Database db = await database;
+    final List<Map<String, dynamic>> maps = await db.query('partialPayment');
+
+    print('==== All Partial Payments ====');
+    if (maps.isEmpty) {
+      print('No partial payments found');
+    } else {
+      for (var map in maps) {
+        print(
+          'Partial Payment: {partialPaymentId: ${map['partialPaymentId']}, dueDate: ${map['dueDate']}, interestRate: ${map['interestRate']}, capitalPayment: ${map['capitalPayment']}, interestPaid: ${map['interestPaid']}, paymentDate: ${map['paymentDate']}, paymentMode: ${map['paymentMode']}, remarks: ${map['remarks']}, agentShare: ${map['agentShare']}, agentId: ${map['agentId']}, agentName: ${map['agentName']}, clientId: ${map['clientId']}}',
+        );
+      }
+    }
+    print('===================');
+  }
+
+  // Delete all partial payments
+  Future<void> deleteAllPartialPayments() async {
+    Database db = await database;
+    await db.execute('DROP TABLE IF EXISTS partialPayment');
+    await db.execute('''
+        CREATE TABLE partialPayment (
+        partialPaymentId INTEGER PRIMARY KEY AUTOINCREMENT,
+        dueDate TEXT NOT NULL,
+        interestRate REAL NOT NULL,
+        capitalPayment REAL,
+        interestPaid REAL,
+        paymentDate TEXT,
+        paymentMode TEXT,
+        remarks TEXT,
+        agentShare REAL NOT NULL,
+        agentId INTEGER NOT NULL,
+        agentName TEXT NOT NULL,
+        clientId INTEGER NOT NULL,
+        clientName TEXT NOT NULL, 
+        paymentId INTEGER NOT NULL,
+        FOREIGN KEY (paymentId) REFERENCES payment (paymentId) ON DELETE CASCADE
+        )
+        ''');
+  }
+
+  // Delete all balance sheets
+  Future<void> deleteAllBalanceSheets() async {
+    Database db = await database;
+    await db.execute('DROP TABLE IF EXISTS balanceSheet');
+    await db.execute('''
+        CREATE TABLE balanceSheet( 
+        balanceSheetId INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        balanceOUT REAL NOT NULL,
+        balanceIN REAL NOT NULL,
+        balanceAmount REAL,
+        remarks TEXT,
+        clientId INTEGER,
+        paymentId INTEGER,
+        partialPaymentId INTEGER,
+        FOREIGN KEY (clientId) REFERENCES client (clientId) ON DELETE CASCADE,
+        FOREIGN KEY (paymentId) REFERENCES payment (paymentId) ON DELETE CASCADE,
+        FOREIGN KEY (partialPaymentId) REFERENCES partialPayment (partialPaymentId) ON DELETE CASCADE
+        )
+        ''');
+  }
+
+  // Insert a balance sheet
+  Future<int> insertBalanceSheet(Balancesheet balanceSheet) async {
+    Database db = await database;
+    return await db.insert("balanceSheet", balanceSheet.toMap());
+  }
+
+  // delete balance sheet by id paymentId if exists
+  Future<int> deleteBalanceSheetByPaymentId(int paymentId) async {
+    Database db = await database;
+    return await db.delete(
+      'balanceSheet',
+      where: 'paymentId = ?',
+      whereArgs: [paymentId],
+    );
+  }
+
+  // delete balance sheet by id partialPaymentId if exists
+  Future<int> deleteBalanceSheetByPartialPaymentId(int partialPaymentId) async {
+    Database db = await database;
+    return await db.delete(
+      'balanceSheet',
+      where: 'partialPaymentId = ?',
+      whereArgs: [partialPaymentId],
+    );
+  }
+
+  // Get all balance sheets
+  Future<List<Balancesheet>> getAllBalanceSheets() async {
+    Database db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'balanceSheet',
+      orderBy: 'balanceSheetId DESC',
+    );
+
+    return List.generate(maps.length, (index) {
+      return Balancesheet.fromMap(maps[index]);
+    });
+  }
+
+  // Delete balance sheet by id
+  Future<int> deleteBalanceSheet(int id) async {
+    Database db = await database;
+    return await db.delete(
+      'balanceSheet',
+      where: 'balanceSheetId = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // Print all balance sheets (utility method for debugging)
+  Future<void> printAllBalanceSheets() async {
+    Database db = await database;
+    final List<Map<String, dynamic>> maps = await db.query('balanceSheet');
+
+    print('==== All Balance Sheets ====');
+    if (maps.isEmpty) {
+      print('No balance sheets found');
+    } else {
+      for (var map in maps) {
+        print(
+          'Balance Sheet: {balanceSheetId: ${map['balanceSheetId']}, date: ${map['date']}, balanceOUT: ${map['balanceOUT']}, balanceIN: ${map['balanceIN']}, balanceAmount: ${map['balanceAmount']}, remarks: ${map['remarks']}}',
+        );
+      }
+    }
+    print('===================');
   }
 
   // Print all clients (utility method for debugging)
@@ -318,7 +609,7 @@ class DatabaseHelper {
       print('No agents found');
     } else {
       for (var agent in agents) {
-        print('Agent ID: ${agent.agentId}, Name: ${agent.agentName}');
+        print('Agent ID: ${agent.agentId}, Name: ${agent.agentName},');
       }
     }
     print('===================');
@@ -349,11 +640,16 @@ class DatabaseHelper {
         paymentId INTEGER PRIMARY KEY AUTOINCREMENT,
         loanTerm INTEGER NOT NULL,
         dueDate TEXT NOT NULL,
+        principalBalance REAL NOT NULL,
         monthlyPayment REAL NOT NULL,
         interestPaid REAL NOT NULL,
+        capitalPayment REAL NOT NULL,
+        agentShare REAL NOT NULL,
         paymentDate TEXT, 
         paymentMode TEXT,
         remarks TEXT,
+        agentName INTEGER NOT NULL,
+        agentId INTEGER NOT NULL,
         clientId INTEGER NOT NULL,
         FOREIGN KEY (clientId) REFERENCES client (clientId) ON DELETE CASCADE
         )

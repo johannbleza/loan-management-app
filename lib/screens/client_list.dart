@@ -2,17 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:jiffy/jiffy.dart';
 import 'package:loan_management/database/database.dart';
+import 'package:loan_management/models/balanceSheet.dart';
 import 'package:loan_management/models/client.dart';
 import 'package:loan_management/screens/client_details_screen.dart';
 
-class ClientsScreen extends StatefulWidget {
-  const ClientsScreen({super.key});
+class ClientList extends StatefulWidget {
+  const ClientList({super.key});
 
   @override
-  State<ClientsScreen> createState() => _ClientsScreenState();
+  State<ClientList> createState() => _ClientListState();
 }
 
-class _ClientsScreenState extends State<ClientsScreen> {
+class _ClientListState extends State<ClientList> {
   final DatabaseHelper _databaseHelper = DatabaseHelper();
   var clientsData = [];
   var agentsData = [];
@@ -63,12 +64,15 @@ class _ClientsScreenState extends State<ClientsScreen> {
 
   @override
   void initState() {
+    selectedDate = DateTime.now();
+    _loanDateTextController.text = Jiffy.parseFromDateTime(
+      selectedDate!,
+    ).format(pattern: 'MMMM d, yyy');
     getAllAgents();
     refreshClientsTable();
     super.initState();
   }
 
-  // Open Add Client Dialog
   // Open Add Client Dialog
   void showAddClientDialog() {
     showDialog(
@@ -125,9 +129,52 @@ class _ClientsScreenState extends State<ClientsScreen> {
                         _interestRateTextController.text,
                       ),
                       agentId: selectedAgentId!,
+                      agentName:
+                          agentsData
+                              .firstWhere(
+                                (agent) => agent.agentId == selectedAgentId!,
+                              )
+                              .agentName,
                       agentShare: double.parse(_agentShareTextController.text),
                     ),
                   );
+
+                  // most recent clientId
+                  Client? client = await _databaseHelper.getLastCreatedClient();
+
+                  if (client != null) {
+                    bool isGenerated = await _databaseHelper.hasPayments(
+                      client.clientId!,
+                    );
+                    await _databaseHelper.insertBalanceSheet(
+                      Balancesheet(
+                        date: Jiffy.parse(selectedDate.toString()).yMMMd,
+                        balanceOUT: double.parse(
+                          _loanAmountTextController.text,
+                        ),
+                        balanceIN: 0,
+                        clientId: client.clientId,
+                        remarks: "Loan for ${_clientNameTextController.text}",
+                      ),
+                    );
+                    if (!isGenerated) {
+                      await _databaseHelper.generatePayments(client);
+                    }
+
+                    var allPayments = await _databaseHelper.getAllPayments();
+                    final today = DateTime.now();
+                    for (var payment in allPayments) {
+                      DateTime dueDate = DateTime.parse(payment.dueDate);
+                      if (dueDate.isBefore(today) && payment.remarks == "Due") {
+                        await _databaseHelper.updatePaymentRemarks(
+                          payment.paymentId!,
+                          "Overdue",
+                          "",
+                          "",
+                        );
+                      }
+                    }
+                  }
 
                   // Clear form fields
                   _clientNameTextController.clear();
@@ -145,7 +192,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
               ),
             ],
             content: SizedBox(
-              width: 400,
+              width: 300,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
@@ -178,7 +225,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
 
                   // Add a state variable to track selected agent
                   DropdownMenu<int>(
-                    width: 400,
+                    width: 300,
                     label: Text("Select Agent"),
                     onSelected: (int? value) {
                       setState(() {
@@ -211,8 +258,11 @@ class _ClientsScreenState extends State<ClientsScreen> {
                     controller: _loanDateTextController,
                     style: TextStyle(color: Colors.black),
                   ),
-                  SizedBox(height: 8),
+                  SizedBox(height: 16),
                   OutlinedButton(
+                    style: ButtonStyle(
+                      minimumSize: MaterialStateProperty.all(Size(300, 0)),
+                    ),
                     onPressed: () {
                       _selectDate();
                     },
@@ -266,133 +316,135 @@ class _ClientsScreenState extends State<ClientsScreen> {
   Widget build(BuildContext context) {
     return ListView(
       children: [
+        SizedBox(height: 64),
         Center(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 40),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Client List", style: TextStyle(fontSize: 40)),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    columnSpacing: 24,
-                    columns: [
-                      DataColumn(label: Text("")),
-                      DataColumn(label: Text("Client Name")),
-                      DataColumn(label: Text("Amount")),
-                      DataColumn(label: Text("Interest Rate")),
-                      DataColumn(label: Text("Term")),
-                      DataColumn(label: Text("Loan Date")),
-                      DataColumn(label: Text("Agent Name")),
-                      DataColumn(label: Text("Agent Share (%)")),
-                      DataColumn(
-                        label: TextButton(
-                          onPressed: () {
-                            showAddClientDialog();
-                          },
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStatePropertyAll(
-                              Colors.blue,
-                            ),
-                            foregroundColor: WidgetStatePropertyAll(
-                              Colors.white,
-                            ),
-                          ),
-                          child: Text("Add New Client +"),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Client List (${clientsData.length})",
+                style: TextStyle(fontSize: 40, fontWeight: FontWeight.w600),
+              ),
+              SizedBox(height: 24),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  columnSpacing: 24,
+                  columns: [
+                    DataColumn(label: Text("")),
+                    DataColumn(label: Text("Client Name")),
+                    DataColumn(label: Text("Amount")),
+                    DataColumn(label: Text("Interest Rate")),
+                    DataColumn(label: Text("Term")),
+                    DataColumn(label: Text("Loan Date")),
+                    DataColumn(label: Text("Agent Name")),
+                    DataColumn(label: Text("Agent Share (%)")),
+                    DataColumn(
+                      label: TextButton(
+                        onPressed: () {
+                          showAddClientDialog();
+                        },
+                        style: ButtonStyle(
+                          backgroundColor: WidgetStatePropertyAll(Colors.blue),
+                          foregroundColor: WidgetStatePropertyAll(Colors.white),
                         ),
+                        child: Text("Add New Client +"),
                       ),
-                    ],
-                    rows: List<DataRow>.generate(
-                      clientsData.length,
-                      (index) => DataRow(
-                        cells: [
-                          DataCell(Text((index + 1).toString())),
-                          DataCell(
-                            TextButton(
-                              onPressed: () async {
-                                await _databaseHelper.generatePayments(
-                                  clientsData[index],
+                    ),
+                  ],
+                  rows: List<DataRow>.generate(
+                    clientsData.length,
+                    (index) => DataRow(
+                      cells: [
+                        DataCell(Text((index + 1).toString())),
+                        DataCell(
+                          TextButton(
+                            onPressed: () async {
+                              var allPayments =
+                                  await _databaseHelper.getAllPayments();
+                              final today = DateTime.now();
+                              for (var payment in allPayments) {
+                                DateTime dueDate = DateTime.parse(
+                                  payment.dueDate,
                                 );
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) => ClientDetailsScreen(
-                                          clientId:
-                                              clientsData[index].clientId!,
-                                          agentName:
-                                              agentsData
-                                                  .firstWhere(
-                                                    (agent) =>
-                                                        agent.agentId ==
-                                                        clientsData[index]
-                                                            .agentId,
-                                                  )
-                                                  .agentName,
-                                        ),
-                                  ),
-                                );
+                                if (dueDate.isBefore(today) &&
+                                    payment.remarks == "Due") {
+                                  await _databaseHelper.updatePaymentRemarks(
+                                    payment.paymentId!,
+                                    "Overdue",
+                                    "",
+                                    "",
+                                  );
+                                }
+                              }
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) => ClientDetailsScreen(
+                                        clientId: clientsData[index].clientId!,
+                                        agentName:
+                                            agentsData
+                                                .firstWhere(
+                                                  (agent) =>
+                                                      agent.agentId ==
+                                                      clientsData[index]
+                                                          .agentId,
+                                                )
+                                                .agentName,
+                                      ),
+                                ),
+                              );
+                            },
+                            child: Text(clientsData[index].clientName ?? ""),
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            "PHP ${clientsData[index].loanAmount.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}",
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            "${clientsData[index].interestRate.toString()}%",
+                          ),
+                        ),
+                        DataCell(Text(clientsData[index].loanTerm.toString())),
+                        DataCell(
+                          Text(
+                            Jiffy.parse(
+                              clientsData[index].loanDate,
+                            ).format(pattern: 'MMMM d, yyy'),
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            agentsData
+                                .firstWhere(
+                                  (agent) =>
+                                      agent.agentId ==
+                                      clientsData[index].agentId,
+                                )
+                                .agentName,
+                          ),
+                        ),
+                        DataCell(Text("${clientsData[index].agentShare}%")),
+                        DataCell(
+                          Center(
+                            child: IconButton(
+                              onPressed: () {
+                                confirmClientDelete(clientsData[index]);
                               },
-                              child: Text(clientsData[index].clientName ?? ""),
+                              icon: Icon(Icons.delete),
                             ),
                           ),
-                          DataCell(
-                            Text(
-                              "PHP ${clientsData[index].loanAmount.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}",
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              "${clientsData[index].interestRate.toString()}%",
-                            ),
-                          ),
-                          DataCell(
-                            Text(clientsData[index].loanTerm.toString()),
-                          ),
-                          DataCell(
-                            Text(
-                              Jiffy.parse(
-                                clientsData[index].loanDate,
-                              ).format(pattern: 'MMMM d, yyy'),
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                              agentsData
-                                  .firstWhere(
-                                    (agent) =>
-                                        agent.agentId ==
-                                        clientsData[index].agentId,
-                                  )
-                                  .agentName,
-                            ),
-                          ),
-                          DataCell(Text("${clientsData[index].agentShare}%")),
-                          DataCell(
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                IconButton(
-                                  onPressed: () {},
-                                  icon: Icon(Icons.edit),
-                                ),
-                                IconButton(
-                                  onPressed: () {
-                                    confirmClientDelete(clientsData[index]);
-                                  },
-                                  icon: Icon(Icons.delete),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ],
