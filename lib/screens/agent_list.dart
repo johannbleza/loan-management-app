@@ -197,97 +197,104 @@ class _AgentListState extends State<AgentList> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        SizedBox(height: 64),
-        Center(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Agent List (${agentData.length})",
-                style: TextStyle(fontSize: 40, fontWeight: FontWeight.w600),
-              ),
-              SizedBox(height: 24),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columnSpacing: 100,
-                  columns: [
-                    DataColumn(label: Text("")),
-                    DataColumn(label: Text("Agent Name")),
-                    DataColumn(label: Text("Contact No")),
-                    DataColumn(label: Text("Email")),
-                    DataColumn(label: Text("No of Clients")),
-                    DataColumn(
-                      label: TextButton(
-                        onPressed: () {
-                          showAddAgentDialog();
-                        },
-                        style: ButtonStyle(
-                          backgroundColor: WidgetStatePropertyAll(Colors.blue),
-                          foregroundColor: WidgetStatePropertyAll(Colors.white),
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: ListView(
+        children: [
+          SizedBox(height: 64),
+          Center(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Agent List (${agentData.length})",
+                  style: TextStyle(fontSize: 40, fontWeight: FontWeight.w600),
+                ),
+                SizedBox(height: 24),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    columnSpacing: 100,
+                    columns: [
+                      DataColumn(label: Text("")),
+                      DataColumn(label: Text("Agent Name")),
+                      DataColumn(label: Text("Contact No")),
+                      DataColumn(label: Text("Email")),
+                      DataColumn(label: Text("No of Clients")),
+                      DataColumn(
+                        label: TextButton(
+                          onPressed: () {
+                            showAddAgentDialog();
+                          },
+                          style: ButtonStyle(
+                            backgroundColor: WidgetStatePropertyAll(
+                              Colors.blue,
+                            ),
+                            foregroundColor: WidgetStatePropertyAll(
+                              Colors.white,
+                            ),
+                          ),
+                          child: Text("Add New Agent +"),
                         ),
-                        child: Text("Add New Agent +"),
                       ),
-                    ),
-                  ],
-                  rows: List<DataRow>.generate(
-                    agentData.length,
-                    (index) => DataRow(
-                      cells: [
-                        DataCell(Text((index + 1).toString())),
-                        DataCell(
-                          TextButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder:
-                                      (context) => AgentDetailsScreen(
-                                        agent: agentData[index],
-                                      ),
-                                ),
-                              ).whenComplete(() {
-                                refreshAgentsTable();
-                              });
-                            },
-                            child: Text(agentData[index].agentName ?? ""),
-                          ),
-                        ),
-                        DataCell(Text(agentData[index].contactNo ?? "")),
-                        DataCell(Text(agentData[index].email ?? "")),
-                        DataCell(
-                          FutureBuilder<List<dynamic>>(
-                            future: _databaseHelper.getClientsByAgentId(
-                              agentData[index].agentId,
-                            ),
-                            builder: (context, snapshot) {
-                              return Text(
-                                (snapshot.data?.length ?? 0).toString(),
-                              );
-                            },
-                          ),
-                        ),
-                        DataCell(
-                          Center(
-                            child: IconButton(
+                    ],
+                    rows: List<DataRow>.generate(
+                      agentData.length,
+                      (index) => DataRow(
+                        cells: [
+                          DataCell(Text((index + 1).toString())),
+                          DataCell(
+                            TextButton(
                               onPressed: () {
-                                confirmAgentDelete(agentData[index]);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => AgentDetailsScreen(
+                                          agent: agentData[index],
+                                        ),
+                                  ),
+                                ).whenComplete(() {
+                                  refreshAgentsTable();
+                                });
                               },
-                              icon: Icon(Icons.delete),
+                              child: Text(agentData[index].agentName ?? ""),
                             ),
                           ),
-                        ),
-                      ],
+                          DataCell(Text(agentData[index].contactNo ?? "")),
+                          DataCell(Text(agentData[index].email ?? "")),
+                          DataCell(
+                            FutureBuilder<List<dynamic>>(
+                              future: _databaseHelper.getClientsByAgentId(
+                                agentData[index].agentId,
+                              ),
+                              builder: (context, snapshot) {
+                                return Text(
+                                  (snapshot.data?.length ?? 0).toString(),
+                                );
+                              },
+                            ),
+                          ),
+                          DataCell(
+                            Center(
+                              child: IconButton(
+                                onPressed: () {
+                                  confirmAgentDelete(agentData[index]);
+                                },
+                                icon: Icon(Icons.delete),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

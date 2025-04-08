@@ -461,19 +461,32 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                                   DataCell(
                                     Text(
                                       "PHP ${payment.monthlyPayment.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}",
-                                      style: TextStyle(color: Colors.black),
                                     ),
                                   ),
                                   DataCell(
                                     Text(
                                       "PHP ${payment.interestPaid.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}",
-                                      style: TextStyle(),
+                                      style: TextStyle(
+                                        color:
+                                            (payment.remarks == "Paid" ||
+                                                    payment.remarks ==
+                                                        "Partial (Interest)")
+                                                ? Colors.green
+                                                : Colors.black,
+                                      ),
                                     ),
                                   ),
                                   DataCell(
                                     Text(
                                       "PHP ${payment.capitalPayment.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}",
-                                      style: TextStyle(),
+                                      style: TextStyle(
+                                        color:
+                                            (payment.remarks == "Paid" ||
+                                                    payment.remarks ==
+                                                        "Partial (Principal)")
+                                                ? Colors.green
+                                                : Colors.black,
+                                      ),
                                     ),
                                   ),
                                   DataCell(
@@ -785,6 +798,28 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                                                             payment.paymentId!,
                                                           );
                                                     }
+                                                    _databaseHelper.insertBalanceSheet(
+                                                      Balancesheet(
+                                                        date:
+                                                            paymentDateController
+                                                                .text,
+                                                        // Use the sum of interest and capital payment
+                                                        balanceIN:
+                                                            payment
+                                                                .interestPaid +
+                                                            payment
+                                                                .capitalPayment,
+                                                        balanceOUT: 0,
+                                                        remarks:
+                                                            "Monthly Payment for ${currentClient.clientName}",
+                                                        clientId:
+                                                            currentClient
+                                                                .clientId,
+                                                        paymentId:
+                                                            payment.paymentId,
+                                                      ),
+                                                    );
+
                                                     _databaseHelper
                                                         .updatePaymentRemarks(
                                                           payment.paymentId!,
@@ -829,8 +864,7 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                                                                       .monthlyPayment,
                                                           balanceOUT: 0,
                                                           remarks:
-                                                              "Partial Payment for ${currentClient.clientName}",
-
+                                                              "${paymentStatusController.text} - ${currentClient.clientName} - Term ${payments.indexOf(payment) + 1}/${currentClient.loanTerm}",
                                                           clientId:
                                                               currentClient
                                                                   .clientId,
@@ -846,14 +880,15 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                                                           date:
                                                               paymentDateController
                                                                   .text,
+                                                          // Use the sum of interest and capital payment
                                                           balanceIN:
                                                               payment
-                                                                  .interestPaid! +
+                                                                  .interestPaid +
                                                               payment
-                                                                  .capitalPayment!,
+                                                                  .capitalPayment,
                                                           balanceOUT: 0,
                                                           remarks:
-                                                              "Monthly Payment for ${currentClient.clientName}",
+                                                              "Full Payment - ${currentClient.clientName} - Term ${payments.indexOf(payment) + 1}/${currentClient.loanTerm}",
                                                           clientId:
                                                               currentClient
                                                                   .clientId,
@@ -1036,8 +1071,8 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                                         style: TextStyle(
                                           color:
                                               partial.remarks == "Paid"
-                                                  ? Colors.teal
-                                                  : Colors.red,
+                                                  ? Colors.green
+                                                  : Colors.black,
                                         ),
                                       ),
                                     ),
@@ -1049,8 +1084,8 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                                         style: TextStyle(
                                           color:
                                               partial.remarks == "Paid"
-                                                  ? Colors.teal
-                                                  : Colors.deepOrange,
+                                                  ? Colors.green
+                                                  : Colors.black,
                                         ),
                                       ),
                                     ),
@@ -1257,8 +1292,7 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                                                                       .interestPaid!,
                                                               balanceOUT: 0,
                                                               remarks:
-                                                                  "Partial Payment for ${currentClient.clientName}",
-
+                                                                  "Partial Payment Completion - ${currentClient.clientName} - (Interest: ${partial.interestPaid!.toStringAsFixed(2)}, Principal: ${partial.capitalPayment!.toStringAsFixed(2)})",
                                                               clientId:
                                                                   currentClient
                                                                       .clientId,

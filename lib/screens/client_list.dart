@@ -314,140 +314,150 @@ class _ClientListState extends State<ClientList> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        SizedBox(height: 64),
-        Center(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Client List (${clientsData.length})",
-                style: TextStyle(fontSize: 40, fontWeight: FontWeight.w600),
-              ),
-              SizedBox(height: 24),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columnSpacing: 24,
-                  columns: [
-                    DataColumn(label: Text("")),
-                    DataColumn(label: Text("Client Name")),
-                    DataColumn(label: Text("Amount")),
-                    DataColumn(label: Text("Interest Rate")),
-                    DataColumn(label: Text("Term")),
-                    DataColumn(label: Text("Loan Date")),
-                    DataColumn(label: Text("Agent Name")),
-                    DataColumn(label: Text("Agent Share (%)")),
-                    DataColumn(
-                      label: TextButton(
-                        onPressed: () {
-                          showAddClientDialog();
-                        },
-                        style: ButtonStyle(
-                          backgroundColor: WidgetStatePropertyAll(Colors.blue),
-                          foregroundColor: WidgetStatePropertyAll(Colors.white),
-                        ),
-                        child: Text("Add New Client +"),
-                      ),
-                    ),
-                  ],
-                  rows: List<DataRow>.generate(
-                    clientsData.length,
-                    (index) => DataRow(
-                      cells: [
-                        DataCell(Text((index + 1).toString())),
-                        DataCell(
-                          TextButton(
-                            onPressed: () async {
-                              var allPayments =
-                                  await _databaseHelper.getAllPayments();
-                              final today = DateTime.now();
-                              for (var payment in allPayments) {
-                                DateTime dueDate = DateTime.parse(
-                                  payment.dueDate,
-                                );
-                                if (dueDate.isBefore(today) &&
-                                    payment.remarks == "Due") {
-                                  await _databaseHelper.updatePaymentRemarks(
-                                    payment.paymentId!,
-                                    "Overdue",
-                                    "",
-                                    "",
-                                  );
-                                }
-                              }
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder:
-                                      (context) => ClientDetailsScreen(
-                                        clientId: clientsData[index].clientId!,
-                                        agentName:
-                                            agentsData
-                                                .firstWhere(
-                                                  (agent) =>
-                                                      agent.agentId ==
-                                                      clientsData[index]
-                                                          .agentId,
-                                                )
-                                                .agentName,
-                                      ),
-                                ),
-                              );
-                            },
-                            child: Text(clientsData[index].clientName ?? ""),
-                          ),
-                        ),
-                        DataCell(
-                          Text(
-                            "PHP ${clientsData[index].loanAmount.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}",
-                          ),
-                        ),
-                        DataCell(
-                          Text(
-                            "${clientsData[index].interestRate.toString()}%",
-                          ),
-                        ),
-                        DataCell(Text(clientsData[index].loanTerm.toString())),
-                        DataCell(
-                          Text(
-                            Jiffy.parse(
-                              clientsData[index].loanDate,
-                            ).format(pattern: 'MMMM d, yyy'),
-                          ),
-                        ),
-                        DataCell(
-                          Text(
-                            agentsData
-                                .firstWhere(
-                                  (agent) =>
-                                      agent.agentId ==
-                                      clientsData[index].agentId,
-                                )
-                                .agentName,
-                          ),
-                        ),
-                        DataCell(Text("${clientsData[index].agentShare}%")),
-                        DataCell(
-                          Center(
-                            child: IconButton(
-                              onPressed: () {
-                                confirmClientDelete(clientsData[index]);
-                              },
-                              icon: Icon(Icons.delete),
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: ListView(
+        children: [
+          SizedBox(height: 64),
+          Center(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Client List (${clientsData.length})",
+                  style: TextStyle(fontSize: 40, fontWeight: FontWeight.w600),
+                ),
+                SizedBox(height: 24),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    columnSpacing: 24,
+                    columns: [
+                      DataColumn(label: Text("")),
+                      DataColumn(label: Text("Client Name")),
+                      DataColumn(label: Text("Amount")),
+                      DataColumn(label: Text("Interest Rate")),
+                      DataColumn(label: Text("Term")),
+                      DataColumn(label: Text("Loan Date")),
+                      DataColumn(label: Text("Agent Name")),
+                      DataColumn(label: Text("Agent Share (%)")),
+                      DataColumn(
+                        label: TextButton(
+                          onPressed: () {
+                            showAddClientDialog();
+                          },
+                          style: ButtonStyle(
+                            backgroundColor: WidgetStatePropertyAll(
+                              Colors.blue,
+                            ),
+                            foregroundColor: WidgetStatePropertyAll(
+                              Colors.white,
                             ),
                           ),
+                          child: Text("Add New Client +"),
                         ),
-                      ],
+                      ),
+                    ],
+                    rows: List<DataRow>.generate(
+                      clientsData.length,
+                      (index) => DataRow(
+                        cells: [
+                          DataCell(Text((index + 1).toString())),
+                          DataCell(
+                            TextButton(
+                              onPressed: () async {
+                                var allPayments =
+                                    await _databaseHelper.getAllPayments();
+                                final today = DateTime.now();
+                                for (var payment in allPayments) {
+                                  DateTime dueDate = DateTime.parse(
+                                    payment.dueDate,
+                                  );
+                                  if (dueDate.isBefore(today) &&
+                                      payment.remarks == "Due") {
+                                    await _databaseHelper.updatePaymentRemarks(
+                                      payment.paymentId!,
+                                      "Overdue",
+                                      "",
+                                      "",
+                                    );
+                                  }
+                                }
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => ClientDetailsScreen(
+                                          clientId:
+                                              clientsData[index].clientId!,
+                                          agentName:
+                                              agentsData
+                                                  .firstWhere(
+                                                    (agent) =>
+                                                        agent.agentId ==
+                                                        clientsData[index]
+                                                            .agentId,
+                                                  )
+                                                  .agentName,
+                                        ),
+                                  ),
+                                );
+                              },
+                              child: Text(clientsData[index].clientName ?? ""),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              "PHP ${clientsData[index].loanAmount.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}",
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              "${clientsData[index].interestRate.toString()}%",
+                            ),
+                          ),
+                          DataCell(
+                            Text(clientsData[index].loanTerm.toString()),
+                          ),
+                          DataCell(
+                            Text(
+                              Jiffy.parse(
+                                clientsData[index].loanDate,
+                              ).format(pattern: 'MMMM d, yyy'),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              agentsData
+                                  .firstWhere(
+                                    (agent) =>
+                                        agent.agentId ==
+                                        clientsData[index].agentId,
+                                  )
+                                  .agentName,
+                            ),
+                          ),
+                          DataCell(Text("${clientsData[index].agentShare}%")),
+                          DataCell(
+                            Center(
+                              child: IconButton(
+                                onPressed: () {
+                                  confirmClientDelete(clientsData[index]);
+                                },
+                                icon: Icon(Icons.delete),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

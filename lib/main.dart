@@ -62,42 +62,9 @@ class _MyAppState extends State<MyApp> {
       ),
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        floatingActionButton: FloatingActionButton(
-          onPressed: () async {
-            // await _databaseHelper.deleteAllBalanceSheets();
-
-            // await _databaseHelper.insertBalanceSheet(
-            //   Balancesheet(
-            //     date: 'Apr 5, 2025',
-            //     balanceOUT: 100000,
-            //     remarks: "Initial Balance",
-            //     balanceIN: 0,
-            //   ),
-            // );
-            // // await _databaseHelper.printAllBalanceSheets();
-
-            // Get all balance sheets
-            // List<Balancesheet> balanceSheets =
-            //     await _databaseHelper.getAllBalanceSheets();
-            // // // Print all balance sheets
-            // for (var balanceSheet in balanceSheets) {
-            //   print(
-            //     "Date: ${balanceSheet.date}, OUT: ${balanceSheet.balanceOUT}, IN: ${balanceSheet.balanceIN}, Balance: ${balanceSheet.balanceAmount}, Remarks: ${balanceSheet.remarks}",
-            //   );
-            // }
-
-            _databaseHelper.printAllBalanceSheets();
-
-            // // print(
-            // //   "Date: ${test.date}, OUT: ${test.balanceOUT}, IN: ${test.balanceIN}, Balance: ${test.balanceAmount}, Remarks: ${test.remarks}",
-            // // );
-          },
-          child: const Icon(Icons.add),
-        ),
         body: Row(
           children: [
             NavigationRail(
-              minWidth: 100,
               leading: SizedBox(height: 100),
               backgroundColor: Colors.indigo,
               selectedIconTheme: const IconThemeData(color: Colors.indigo),
