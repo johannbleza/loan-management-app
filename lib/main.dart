@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:jiffy/jiffy.dart';
 import 'package:loan_management/database/database.dart';
-import 'package:loan_management/models/balanceSheet.dart';
 import 'package:loan_management/screens/agent_list.dart';
 import 'package:loan_management/screens/balance_sheet_screen.dart';
 import 'package:loan_management/screens/client_list.dart';
 import 'package:loan_management/screens/monthly_report_screen.dart';
 import 'package:loan_management/screens/overview_page.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  sqfliteFfiInit();
+
+  databaseFactory = databaseFactoryFfi;
 
   await DatabaseHelper().database;
   runApp(const MyApp());

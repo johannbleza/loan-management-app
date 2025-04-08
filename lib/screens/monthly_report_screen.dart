@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/rendering.dart';
 import 'package:jiffy/jiffy.dart';
 import 'package:loan_management/database/database.dart';
 import 'package:loan_management/models/balanceSheet.dart';
@@ -215,7 +213,6 @@ class _MonthlyReportState extends State<MonthlyReport> {
 
   // Method to calculate totals to match transaction total styling
   void calculateTotals(List<Payment> payments) {
-    double monthlyTotal = 0.0;
     double interestTotal = 0.0;
     double capitalTotal = 0.0;
     double agentShareTotal = 0.0;
@@ -268,7 +265,7 @@ class _MonthlyReportState extends State<MonthlyReport> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(height: 64),
+                  SizedBox(height: 24),
                   Text(
                     "Monthly Report",
                     style: TextStyle(fontSize: 40, fontWeight: FontWeight.w600),

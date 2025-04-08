@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:jiffy/jiffy.dart';
 import 'package:loan_management/database/database.dart';
 import 'package:loan_management/models/balanceSheet.dart';
-import 'package:sqflite/sqlite_api.dart';
 
 class BalanceSheetScreen extends StatefulWidget {
   const BalanceSheetScreen({super.key});
@@ -56,7 +55,7 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(height: 60),
+                SizedBox(height: 24),
                 Text(
                   "Balance Sheet",
                   style: TextStyle(fontSize: 40, fontWeight: FontWeight.w600),

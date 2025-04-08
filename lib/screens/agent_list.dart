@@ -201,7 +201,7 @@ class _AgentListState extends State<AgentList> {
       padding: const EdgeInsets.all(24.0),
       child: ListView(
         children: [
-          SizedBox(height: 64),
+          SizedBox(height: 24),
           Center(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

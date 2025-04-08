@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/rendering.dart';
 import 'package:jiffy/jiffy.dart';
 import 'package:loan_management/database/database.dart';
 import 'package:loan_management/models/balanceSheet.dart';
@@ -83,7 +81,6 @@ class _OverviewPageState extends State<OverviewPage> {
 
   // Method to calculate totals
   void calculateTotals(List<Payment> payments) {
-    double monthlyTotal = 0.0;
     double interestTotal = 0.0;
     double capitalTotal = 0.0;
 
@@ -127,7 +124,7 @@ class _OverviewPageState extends State<OverviewPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(height: 64),
+                  SizedBox(height: 24),
                   Text(
                     "Dashboard Overview",
                     style: TextStyle(fontSize: 40, fontWeight: FontWeight.w600),
@@ -629,7 +626,7 @@ class _OverviewPageState extends State<OverviewPage> {
                                                               .monthlyPayment,
                                                   balanceOUT: 0,
                                                   remarks:
-                                                      "${paymentStatusController.text} - ${currentMonthPayments[index].clientName} - Term ${currentMonthPayments.indexOf(currentMonthPayments[index]) + 1}/${currentMonthPayments[index].loanTerm}",
+                                                      "${paymentStatusController.text} - ${currentMonthPayments[index].clientName}",
                                                   paymentId:
                                                       currentMonthPayments[index]
                                                           .paymentId,
@@ -650,7 +647,7 @@ class _OverviewPageState extends State<OverviewPage> {
                                                           .capitalPayment, // Sum of interest and capital only
                                                   balanceOUT: 0,
                                                   remarks:
-                                                      "Full Payment - ${currentMonthPayments[index].clientName} - Term ${currentMonthPayments.indexOf(currentMonthPayments[index]) + 1}/${currentMonthPayments[index].loanTerm}",
+                                                      "Full Payment - ${currentMonthPayments[index].clientName}",
                                                   clientId:
                                                       currentMonthPayments[index]
                                                           .clientId,
@@ -1111,7 +1108,7 @@ class _OverviewPageState extends State<OverviewPage> {
                                                               .capitalPayment,
                                                   balanceOUT: 0,
                                                   remarks:
-                                                      "${paymentStatusController.text} - ${overduePayments[index].clientName} - Term ${overduePayments.indexOf(overduePayments[index]) + 1}/${overduePayments[index].loanTerm}",
+                                                      "${paymentStatusController.text} - ${overduePayments[index].clientName}",
                                                   paymentId:
                                                       overduePayments[index]
                                                           .paymentId,
@@ -1132,7 +1129,7 @@ class _OverviewPageState extends State<OverviewPage> {
                                                           .capitalPayment,
                                                   balanceOUT: 0,
                                                   remarks:
-                                                      "Full Payment - ${overduePayments[index].clientName} - Term ${overduePayments.indexOf(overduePayments[index]) + 1}/${overduePayments[index].loanTerm}",
+                                                      "Full Payment - ${overduePayments[index].clientName}",
                                                   clientId:
                                                       overduePayments[index]
                                                           .clientId,
