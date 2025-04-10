@@ -115,6 +115,25 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
     paymentModeController.clear();
   }
 
+  // Method to calculate total partial payments for a term
+  double calculateTotalPartialPayments(int paymentId) {
+    return partialPayment
+        .where((partial) => partial.paymentId == paymentId)
+        .fold(
+          0.0,
+          (sum, partial) =>
+              sum + (partial.interestPaid ?? 0) + (partial.capitalPayment ?? 0),
+        );
+  }
+
+  // Method to check if a term is completed by partial payments
+  bool isTermCompletedByPartialPayments(Payment payment) {
+    double totalPartialPayments = calculateTotalPartialPayments(
+      payment.paymentId!,
+    );
+    return totalPartialPayments >= payment.monthlyPayment;
+  }
+
   @override
   void initState() {
     getClientById();
@@ -305,7 +324,9 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                                   children: [
                                     Text("Total Remaining Balance:"),
                                     Text(
-                                      "PHP ${remainingBalance.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}",
+                                      currentClient != null
+                                          ? "PHP ${remainingBalance.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}"
+                                          : "",
                                       style: TextStyle(
                                         fontSize: 24,
                                         fontWeight: FontWeight.bold,
@@ -938,21 +959,19 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
                                 ),
                                 DataCell(
                                   Text(
-                                    (currentClient != null
-                                        ? "PHP ${(currentClient.loanAmount + (currentClient.loanAmount * currentClient.interestRate / 100)).toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}"
-                                        : " "),
+                                    "PHP ${payments.fold(0.0, (sum, payment) => sum + payment.monthlyPayment).toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}",
                                     style: TextStyle(color: Colors.white),
                                   ),
                                 ),
                                 DataCell(
                                   Text(
-                                    "PHP ${(currentClient != null ? (currentClient.loanAmount * currentClient.interestRate / 100).toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},') : " ")}",
+                                    "PHP ${payments.fold(0.0, (sum, payment) => sum + payment.interestPaid).toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}",
                                     style: TextStyle(color: Colors.white),
                                   ),
                                 ),
                                 DataCell(
                                   Text(
-                                    "PHP ${(currentClient != null ? currentClient.loanAmount.toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},') : " ")}",
+                                    "PHP ${payments.fold(0.0, (sum, payment) => sum + payment.capitalPayment).toStringAsFixed(2).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}",
                                     style: TextStyle(color: Colors.white),
                                   ),
                                 ),
